@@ -12,7 +12,7 @@ elm-live src/Main.elm --pushstate -- --output=elm.js
 
 ## Build
 ```
-elm make src/Main.elm --optimize --output=elm.js
+elm make src/Main.elm --optimize --output=docs/elm.js
 ```
 
 Implemented in Elm 0.19.1
