@@ -14719,7 +14719,7 @@ var $author$project$Main$view = function (model) {
 									]),
 								_List_fromArray(
 									[
-										$elm$html$Html$text('Gullwing helper')
+										$elm$html$Html$text('Gullwing toolbox')
 									])),
 								A2(
 								$elm$html$Html$div,
@@ -14738,9 +14738,9 @@ var $author$project$Main$view = function (model) {
 											]),
 										_List_fromArray(
 											[
-												A4($author$project$Main$viewLink, '/acceleration', 'Acceleration', 0, model.Y),
-												A4($author$project$Main$viewLink, '/resolution', 'Resolution', 1, model.Y),
-												A4($author$project$Main$viewLink, '/precision', 'Precision', 2, model.Y)
+												A4($author$project$Main$viewLink, 'acceleration', 'Acceleration', 0, model.Y),
+												A4($author$project$Main$viewLink, 'resolution', 'Resolution', 1, model.Y),
+												A4($author$project$Main$viewLink, 'precision', 'Precision', 2, model.Y)
 											]))
 									]))
 							]))
