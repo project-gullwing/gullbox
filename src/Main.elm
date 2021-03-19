@@ -223,13 +223,13 @@ view model =
         nav [class "navbar navbar-expand-lg navbar-dark bg-dark" ] [
             div [class "container-fluid"] [
                 span [class "navbar-brand mb-0 h1"] [
-                    text "Gullwing helper"
+                    text "Gullwing toolbox"
                 ],
                 div [class "collapse navbar-collapse", id "navbarSupportedContent"] [
                     ul [class "navbar-nav me-auto mb-2 mb-lg-0"] [
-                        viewLink "/acceleration" "Acceleration" RouteAcceleration model.route,
-                        viewLink "/resolution" "Resolution" RouteResolution model.route,
-                        viewLink "/precision" "Precision" RoutePrecision model.route
+                        viewLink "acceleration" "Acceleration" RouteAcceleration model.route,
+                        viewLink "resolution" "Resolution" RouteResolution model.route,
+                        viewLink "precision" "Precision" RoutePrecision model.route
                     ]
                 ]
             ]
