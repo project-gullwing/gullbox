@@ -7547,6 +7547,19 @@ var $author$project$Utils$Formatters$formatFloat = F2(
 				}),
 			x);
 	});
+var $author$project$Utils$Formatters$formatFloatNoThousands = F2(
+	function (decimalPlaces, x) {
+		return A2(
+			$cuducos$elm_format_number$FormatNumber$format,
+			_Utils_update(
+				$cuducos$elm_format_number$FormatNumber$Locales$frenchLocale,
+				{
+					decimalSeparator: '.',
+					decimals: $cuducos$elm_format_number$FormatNumber$Locales$Exact(decimalPlaces),
+					thousandSeparator: ''
+				}),
+			x);
+	});
 var $terezka$line_charts$Internal$Axis$Line$full = function (color) {
 	return $terezka$line_charts$Internal$Axis$Line$custom(
 		F2(
@@ -14604,7 +14617,7 @@ var $author$project$Page$Acceleration$view = function (model) {
 							', ',
 							A2(
 								$elm$core$List$map,
-								$author$project$Utils$Formatters$formatFloat(1),
+								$author$project$Utils$Formatters$formatFloatNoThousands(1),
 								model.delays)) + '};'))
 					]))
 			]));

@@ -420,7 +420,7 @@ view model =
                 hidden (not model.showSteps),
                 class "steps darker"
             ] [
-                text ("const DELAYS = {" ++ (String.join ", " (List.map (Formatters.formatFloat 1) (model.delays))) ++ "};")
+                text ("const DELAYS = {" ++ (String.join ", " (List.map (Formatters.formatFloatNoThousands 1) (model.delays))) ++ "};")
             ]
         ]
 
