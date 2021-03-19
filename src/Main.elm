@@ -5,7 +5,7 @@ import Browser.Navigation as Nav
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Url
-import Url.Parser as UP exposing ((</>))
+import Url.Parser as UP
 
 import Page.Acceleration as PG_ACC exposing (Model, Msg, init, update)
 import Page.Resolution as PG_RES exposing (Model, Msg, init, update)
@@ -41,6 +41,7 @@ type Route
     | RouteResolution
     | RoutePrecision
 
+
 routeParser : UP.Parser (Route -> a) a
 routeParser =
     UP.oneOf [
@@ -51,9 +52,19 @@ routeParser =
 
 urlToRoute : Url.Url -> Route
 urlToRoute url =
-    Maybe.withDefault RouteAcceleration (UP.parse routeParser url)
+    let
+        lastSegment =
+            Maybe.withDefault "acceleration"
+                <| lastElement
+                <| String.split "/" url.path
+
+    in
+        Maybe.withDefault RouteAcceleration (UP.parse routeParser {url | path = "/" ++ lastSegment })
 
 
+lastElement : List a -> Maybe a
+lastElement =
+    List.foldl (Just >> always) Nothing
 
 
 -- MODEL
