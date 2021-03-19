@@ -1,9 +1,7 @@
 module Page.Acceleration exposing (..)
 
-import Browser.Dom exposing (Error)
 import Calculations.AccelRamp as AccelRamp exposing (Ramp)
-import FormatNumber exposing (format)
-import FormatNumber.Locales exposing (Decimals(..), frenchLocale)
+import Calculations.Stepper as Stepper
 import Html exposing (..)
 import Html.Attributes exposing (class, disabled, for, hidden, id, style, type_, value)
 import Html.Events exposing (..)
@@ -28,24 +26,49 @@ import Color
 import Loading exposing (LoaderType(..), defaultConfig)
 import Process
 import Task exposing (Task)
+import Utils.Conversions as Conversions
+import Utils.Formatters as Formatters
+import Utils.Validations as Validations
 
 
--- MODEL
+-- CONSTANTS
+
+label_ACCEL =
+    "\u{03C9}\u{2032}"
+
+range_ACCEL =
+    (10, 500)
+
+label_MIN_INTERVAL =
+    "cMin"
+
+range_MIN_INTERVAL =
+    (300, 1000)
+
+label_STEP_ANGLE =
+    "\u{03B1}"
+
+range_STEP_ANGLE =
+    (0.1, 360)
+
+label_TIMER_FREQUENCY =
+    "f"
+
+range_TIMER_FREQUENCY =
+    (0.1, 10)
+
 
 type alias Point =
   { x : Float, y : Float }
 
-type alias FloatValue = {
-        str : String,
-        val : Maybe Float,
-        errors : List String
-    }
+
+-- MODEL
 
 type alias Model = {
-        acceleration : FloatValue,
-        minInterval : FloatValue,
-        stepAngle : FloatValue,
-        timerFrequency : FloatValue,
+        acceleration_radSec : Validations.FloatValue,
+        minInterval_usec : Validations.FloatValue,
+        stepAngle_deg : Validations.FloatValue,
+        timerFrequency_mHz : Validations.FloatValue,
         delays : List Float,
         ramp : Ramp,
         showSteps : Bool,
@@ -60,10 +83,10 @@ init : () -> ( Model, Cmd Msg )
 init _ =
   (
     {
-        acceleration = validateAcceleration "35.0",
-        minInterval = validateMinInterval "300.0",
-        stepAngle = validateStepAngle "1.8",
-        timerFrequency = validateTimerFrequency "1",
+        acceleration_radSec = Validations.validateFloatValue "35.0" label_ACCEL range_ACCEL,
+        minInterval_usec = Validations.validateFloatValue "300.0" label_MIN_INTERVAL range_MIN_INTERVAL,
+        stepAngle_deg = Validations.validateFloatValue "1.8" label_STEP_ANGLE range_STEP_ANGLE,
+        timerFrequency_mHz = Validations.validateFloatValue "1" label_TIMER_FREQUENCY range_TIMER_FREQUENCY,
         delays = [],
         ramp = {
             graph = []
@@ -77,23 +100,6 @@ init _ =
 
 -- UPDATE
 
-calc : Float -> Float -> Float -> Float  -> (List Float, Ramp)
-calc accel cMin stepAngle freq =
-    let
-        mHzToHz
-            = 1000000
-
-        frequency_Hz =
-            freq * mHzToHz
-
-        delays =
-            AccelRamp.calculateDelays accel cMin stepAngle frequency_Hz
-
-        ramp =
-            AccelRamp.delaysToRamp stepAngle frequency_Hz delays
-    in
-        (delays, ramp)
-
 type Msg
   = UpdateAcceleration String
   | UpdateMinInterval String
@@ -106,45 +112,42 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    let
-        mHzToHz = 1000000
-    in
-        case msg of
-            UpdateAcceleration value ->
-              ( {model | acceleration = validateAcceleration value}, Cmd.none)
+    case msg of
+        UpdateAcceleration value ->
+          ( {model | acceleration_radSec = Validations.validateFloatValue value label_ACCEL range_ACCEL}, Cmd.none)
 
-            UpdateMinInterval value ->
-              ( {model | minInterval = validateMinInterval value}, Cmd.none)
+        UpdateMinInterval value ->
+          ( {model | minInterval_usec = Validations.validateFloatValue value label_MIN_INTERVAL range_MIN_INTERVAL}, Cmd.none)
 
-            UpdateStepAngle value ->
-              ( {model | stepAngle = validateStepAngle value}, Cmd.none)
+        UpdateStepAngle value ->
+          ( {model | stepAngle_deg = Validations.validateFloatValue value label_STEP_ANGLE range_STEP_ANGLE}, Cmd.none)
 
-            UpdateTimerFrequency value ->
-              ( {model | timerFrequency = validateTimerFrequency value}, Cmd.none)
+        UpdateTimerFrequency value ->
+          ( {model | timerFrequency_mHz = Validations.validateFloatValue value label_TIMER_FREQUENCY range_TIMER_FREQUENCY}, Cmd.none)
 
-            CalculateRamp ->
-                case [model.acceleration.val, model.minInterval.val, model.stepAngle.val, model.timerFrequency.val] of
-                    [Just acceleration, Just minInterval, Just stepAngle, Just frequency] ->
-                        ( {model |
-                            inProgress = True,
-                            delays = [],
-                            ramp = {
-                                graph = []
-                            }
-                        },
-                        Process.sleep 100 |> Task.perform (\_ -> RampReceived (calc acceleration minInterval stepAngle frequency)))
-                    _ ->
-                        ( model, Cmd.none)
+        CalculateRamp ->
+            case [model.acceleration_radSec.val, model.minInterval_usec.val, model.stepAngle_deg.val, model.timerFrequency_mHz.val] of
+                [Just acceleration_radSec2, Just minStepInterval_usec, Just stepAngle_deg, Just timerFrequency_MHz] ->
+                    ( {model |
+                        inProgress = True,
+                        delays = [],
+                        ramp = {
+                            graph = []
+                        }
+                    },
+                    Process.sleep 100 |> Task.perform (\_ -> RampReceived (calcRamp acceleration_radSec2 minStepInterval_usec stepAngle_deg timerFrequency_MHz)))
+                _ ->
+                    ( model, Cmd.none)
 
-            RampReceived (delays, ramp) ->
-                ( {model |
-                    delays = delays,
-                    ramp = ramp,
-                    inProgress = False
-                }, Cmd.none)
+        RampReceived (delays, ramp) ->
+            ( {model |
+                delays = delays,
+                ramp = ramp,
+                inProgress = False
+            }, Cmd.none)
 
-            ToggleShowSteps ->
-                ({model | showSteps = (not model.showSteps)}, Cmd.none)
+        ToggleShowSteps ->
+            ({model | showSteps = (not model.showSteps)}, Cmd.none)
 
 
 -- VIEW
@@ -169,7 +172,7 @@ view model =
                 type_ "text",
                 id "inputAccel",
                 class "item-input cy",
-                value model.acceleration.str,
+                value model.acceleration_radSec.str,
                 onInput UpdateAcceleration
             ] [],
             div [
@@ -188,7 +191,7 @@ view model =
             div [
                 class "item-err"
             ]
-            (List.map errorItem model.acceleration.errors),
+            (List.map errorItem model.acceleration_radSec.errors),
 
         -- Min. interval
             label [
@@ -205,7 +208,7 @@ view model =
                 type_ "text",
                 id "inputDelay",
                 class "item-input",
-                value model.minInterval.str,
+                value model.minInterval_usec.str,
                 onInput UpdateMinInterval
             ] [],
             div [
@@ -221,7 +224,7 @@ view model =
             div [
                 class "item-err cy darker-row"
             ]
-            (List.map errorItem model.minInterval.errors),
+            (List.map errorItem model.minInterval_usec.errors),
 
         -- Step angle
             label [
@@ -235,7 +238,7 @@ view model =
                 type_ "text",
                 id "inputStepAngle",
                 class "item-input cy",
-                value model.stepAngle.str,
+                value model.stepAngle_deg.str,
                 onInput UpdateStepAngle
             ] [],
             div [
@@ -251,7 +254,7 @@ view model =
             div [
                 class "item-err"
             ]
-            (List.map errorItem model.stepAngle.errors),
+            (List.map errorItem model.stepAngle_deg.errors),
 
         -- Timer frequency
             label [
@@ -264,7 +267,7 @@ view model =
                 type_ "text",
                 id "inputFreq",
                 class "item-input",
-                value model.timerFrequency.str,
+                value model.timerFrequency_mHz.str,
                 onInput UpdateTimerFrequency
             ] [],
             div [
@@ -280,14 +283,14 @@ view model =
             div [
                 class "item-err cy darker-row"
             ]
-            (List.map errorItem model.timerFrequency.errors),
+            (List.map errorItem model.timerFrequency_mHz.errors),
 
         -- Controls
             button [
                     type_ "button",
                     class "btn btn-light item-ctrl",
                     onClick CalculateRamp,
-                    disabled (not (List.isEmpty (model.acceleration.errors ++ model.minInterval.errors)))
+                    disabled (not (List.isEmpty (model.acceleration_radSec.errors ++ model.minInterval_usec.errors)))
                 ] [
                     text "Generate ramp"
             ]
@@ -320,9 +323,8 @@ view model =
             ] [
                 LineChart.viewCustom {
                     x = Axis.default 3500 "Time (s)" .delayFromStart,
-                    --y = Axis.default 800 "Motor speed (RPM)" .angularSpeed,
                     y = Axis.custom
-                            { title = Title.atAxisMax 60 0 "Motor speed (RPM)"
+                            { title = Title.atAxisMax 0 0 "\u{03C9} (RPM)"
                             , variable = Just << .angularSpeed
                             , pixels = 800
                             , range = Range.padded 20 20
@@ -364,13 +366,13 @@ view model =
                 div [
                     class "cy bold darker-row"
                 ] [
-                    text ((format { frenchLocale | decimals = Exact 3, decimalSeparator = "." } (List.sum model.delays / 1000000.0)) ++ " s")
+                    text ((Formatters.formatFloat 3 (List.sum model.delays / 1000000.0)) ++ " s")
                 ],
                 -- Max RPM
                 div [
                     class "cy right-label"
                 ] [
-                    text "RPM",
+                    text "\u{03C9}",
                     sub [
                     ] [
                         text "max"
@@ -379,14 +381,14 @@ view model =
                 div [
                     class "cy bold darker-row"
                 ] [
-                    text ((format { frenchLocale | decimals = Exact 0, decimalSeparator = "." } (
-                    case (model.minInterval.val, model.stepAngle.val) of
-                        (Just a, Just b) ->
-                            ((1000000 / a) * b * 60) / 360
+                    text ((Formatters.formatFloat 0 (
+                    case (model.stepAngle_deg.val, model.minInterval_usec.val) of
+                        (Just stepAngle_deg, Just minInterval_usec) ->
+                            Stepper.speed_RPM (Conversions.degToRad stepAngle_deg) (Conversions.usecToSec minInterval_usec)
                         _ ->
                             0
 
-                    )))
+                    )) ++ " RPM")
                 ],
 
                 -- No. of steps
@@ -418,13 +420,11 @@ view model =
                 hidden (not model.showSteps),
                 class "steps darker"
             ] [
-                text ("const DELAYS = {" ++ (String.join ", " (List.map formatDelay (model.delays))) ++ "};")
+                text ("const DELAYS = {" ++ (String.join ", " (List.map (Formatters.formatFloat 1) (model.delays))) ++ "};")
             ]
         ]
 
-formatDelay: Float -> String
-formatDelay x =
-    format { frenchLocale | decimals = Exact 1, decimalSeparator = "." } x
+
 
 errorItem: String -> Html Msg
 errorItem error =
@@ -434,70 +434,21 @@ errorItem error =
     ]
 
 
+-- CALCULATIONS
 
--- VALIDATION
-
-validateAcceleration : String -> FloatValue
-validateAcceleration strInput =
+calcRamp : Float -> Float -> Float -> Float  -> (List Float, Ramp)
+calcRamp acceleration_radSec2 minStepInterval_usec stepAngle_deg timerFrequency_MHz =
     let
-        (value, errors, _) =
-            ("\u{03C9}\u{2032}", strInput)
-                |> parseFloat
-                |> checkRange 10 500
+        timerFrequency_Hz =
+            Conversions.mHzToHz timerFrequency_MHz
+
+        stepAngle_rad =
+            Conversions.degToRad stepAngle_deg
+
+        delays_useconds =
+            AccelRamp.rampIntervals acceleration_radSec2 stepAngle_rad timerFrequency_Hz minStepInterval_usec
+
+        ramp =
+            AccelRamp.intervalsToRampGraph stepAngle_rad timerFrequency_Hz delays_useconds
     in
-    {str = strInput, val = value, errors = errors}
-
-
-validateMinInterval : String -> FloatValue
-validateMinInterval strInput =
-    let
-        (value, errors, _) =
-            ("cMin", strInput)
-                |> parseFloat
-                |> checkRange 300 1000
-    in {str = strInput, val = value, errors = errors}
-
-
-validateStepAngle : String -> FloatValue
-validateStepAngle strInput =
-    let
-        (value, errors, _) =
-            ("\u{03B1}", strInput)
-                |> parseFloat
-                |> checkRange 0.1 360
-    in {str = strInput, val = value, errors = errors}
-
-
-validateTimerFrequency : String -> FloatValue
-validateTimerFrequency strInput =
-    let
-        (value, errors, _) =
-            ("f", strInput)
-                |> parseFloat
-                |> checkRange 0.1 10
-    in {str = strInput, val = value, errors = errors}
-
-
-parseFloat : (String, String) -> (Maybe Float, List String, String)
-parseFloat (paramName, strInput) =
-    let
-        floatValue = String.toFloat strInput
-    in
-        case floatValue of
-            Just val ->
-                (Just val, [], paramName)
-            Nothing ->
-                (Nothing, [paramName ++ " must be a number"], paramName)
-
-
-checkRange : Float -> Float -> (Maybe Float, List String, String) -> (Maybe Float, List String, String)
-checkRange min max (value, errors, paramName) =
-    case value of
-        Just val ->
-            if ((val >= min) && (val <= max)) then
-                (Just val, errors, paramName)
-            else
-                (Nothing, (paramName ++ " must be between " ++ String.fromFloat min ++ " ... " ++ String.fromFloat max) :: errors, paramName)
-
-        Nothing ->
-            (Nothing, errors, paramName)
+        (delays_useconds, ramp)

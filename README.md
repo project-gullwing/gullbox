@@ -4,15 +4,48 @@
 Set of useful tools for the gullwing project.
 
 
-## Dev / Test
+## Dev info 
+Implemented in Elm 0.19.1
+
+### Local test
+Install `elm-live`:
+```
+npm install -g elm-live
+```
 Run in project folder:
 ```
-elm-live src/Main.elm --pushstate -- --output=elm.js
+elm-live src/Main.elm --pushstate --dir=./docs -- --output=./docs/elm.js  
 ```
 
-## Build
+### Build
 ```
 elm make src/Main.elm --optimize --output=docs/elm.js
 ```
 
-Implemented in Elm 0.19.1
+### Units - code nomenclature
+
+| `Angle` | `α` |
+|---|---|
+| Degrees | deg |
+| Radians | rad |
+
+| `Angular speed` | `ϖ` |
+|---|---|
+| Radians / second | radSec |
+| Degrees / second | degSec |
+| Revs per minute | RPM |
+
+| `Angular acceleration` | `ϖ′` |
+|---|---|
+| Radians / second<sup>2</sup> | radSec2 |
+| Degrees / second<sup>2</sup> | degSec2 |
+
+| `Time`, `Interval` | `t`, `c` |
+|---|---|
+| seconds | sec |
+| micro seconds | usec |
+
+| `Frequency` | `f` |
+|---|---|
+| Hertz | Hz |
+| Megahertz | MHz |
